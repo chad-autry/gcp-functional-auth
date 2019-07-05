@@ -14,8 +14,21 @@ function createJWT(user) {
   return jwt.encode(payload, config.JWT_TOKEN_SECRET);
 }
 
+function validateJWT (req, res) {
+  try {
+    console.log('JWT_TOKEN_SECRET:'+config.JWT_TOKEN_SECRET);
+    req.jwtPayload = jwt.decode(req.get('Authorization'), config.JWT_TOKEN_SECRET);
+  } catch(err) {
+    console.log(err.message);
+    res.status(401).send(err.message).end();
+    return false;
+  }
+    return true;
+}
+
 /**
- * HTTP Cloud Function.
+ * Authorizes GCP OAuth
+ * Creates a JWT if the user exists or not
  *
  * @param {Object} req Cloud Function request context.
  *                     More info: https://expressjs.com/en/api.html#req
@@ -56,4 +69,58 @@ exports.auth = (req, res) => {
   });
 };
 
+/**
+ * Creates a user
+ *
+ * @param {Object} req Cloud Function request context.
+ *                     More info: https://expressjs.com/en/api.html#req
+ * @param {Object} res Cloud Function response context.
+ *                     More info: https://expressjs.com/en/api.html#res
+ */
+exports.createUser = (req, res) => {
+  if (!validateJWT(req, res)) {
+    return;
+  }
+};
 
+/**
+ * Gets a user's details
+ *
+ * @param {Object} req Cloud Function request context.
+ *                     More info: https://expressjs.com/en/api.html#req
+ * @param {Object} res Cloud Function response context.
+ *                     More info: https://expressjs.com/en/api.html#res
+ */
+exports.getUser = (req, res) => {
+  if (!validateJWT(req, res)) {
+    return;
+  }
+};
+
+/**
+ * Updates a user object
+ *
+ * @param {Object} req Cloud Function request context.
+ *                     More info: https://expressjs.com/en/api.html#req
+ * @param {Object} res Cloud Function response context.
+ *                     More info: https://expressjs.com/en/api.html#res
+ */
+exports.updateUser = (req, res) => {
+  if (!validateJWT(req, res)) {
+    return;
+  }
+};
+
+/**
+ * Deletes a user
+ *
+ * @param {Object} req Cloud Function request context.
+ *                     More info: https://expressjs.com/en/api.html#req
+ * @param {Object} res Cloud Function response context.
+ *                     More info: https://expressjs.com/en/api.html#res
+ */
+exports.deleteUser = (req, res) => {
+  if (!validateJWT(req, res)) {
+    return;
+  }
+};
