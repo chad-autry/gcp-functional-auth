@@ -48,24 +48,16 @@ exports.auth = (req, res) => {
 
   // Step 1. Exchange authorization code for access token.
   request.post(accessTokenUrl, { json: true, form: params }, function(err, response, token) {
-    var accessToken = token.access_token;
-    var headers = { Authorization: 'Bearer ' + accessToken };
-
-    // Step 2. Retrieve profile information about the current user.
-    request.get({ url: peopleApiUrl, headers: headers, json: true }, function(err, response, profile) {
-      if (profile.error) {
-        return res.status(500).send({message: profile.error.message});
-      }
-      // Step 3. Check if the user already exists
-      var user = {};
-      user.google = profile.sub;
-      user.picture = profile.picture.replace('sz=50', 'sz=200');
-      user.displayName = profile.name;
-      user.name = profile.name;
-      var token = createJWT(user);
-      var responseString = "<html><body><div id=\"token\">" + token + "</div></body></html>";
-      res.send(responseString);
-    });
+    // The access token is a JWT with a payload of the info we want
+    let decoded = jwt.decode(token.access_token, null, true);
+    var user = {};
+    user.google = decoded.sub;
+    //TODO Get Check if the user exists in the service's DB
+    user.displayName = decoded.name;
+    user.name = decoded.name;
+    var token = createJWT(user);
+    var responseString = "<html><body><div id=\"token\">" + token + "</div></body></html>";
+    res.send(responseString);
   });
 };
 
