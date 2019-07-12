@@ -2,7 +2,8 @@
 'use strict';
 
 let config = require('./config');
-var jwt = require('jwt-simple');
+let request = require('request');
+let jwt = require('jwt-simple');
 
 function createJWT(user) {
   var payload = {
