@@ -2,14 +2,18 @@
   "name": "gcp-functional-auth",
   "version": "0.0.1",
   "private": true,
-  "license": "Apache-2.0",
-  "author": "Google Inc.",
+  "license": "MIT",
+  "author": "Chad Autry",
   "repository": {
     "type": "git",
     "url": "https://github.com/GoogleCloudPlatform/nodejs-docs-samples.git"
   },
   "engines": {
     "node": ">=8.0.0"
+  },
+  "scripts": {
+    "eslint:fix": "eslint --fix 'index.js'",
+    "eslint:init":"eslint --init"
   },
   "dependencies": {
     "@google-cloud/debug-agent": "^4.0.0",
@@ -22,8 +26,12 @@
     "@google-cloud/nodejs-repo-tools": "^3.3.0",
     "@google-cloud/pubsub": "^0.28.0",
     "@google-cloud/storage": "^2.0.0",
-    "mocha": "^6.0.0",
+    "eslint": "^6.0.1",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-plugin-prettier": "^3.1.0",
     "express": "^4.16.3",
+    "mocha": "^6.0.0",
+    "prettier": "^1.18.2",
     "proxyquire": "^2.1.0",
     "sinon": "^7.0.0",
     "supertest": "^4.0.0",
