@@ -4,6 +4,7 @@ let config = require("./config");
 let request = require("request");
 let jwt = require("jwt-simple");
 let moment = require("moment");
+const uuidv4 = require("uuid/v4");
 
 const Firestore = require("@google-cloud/firestore");
 
@@ -13,7 +14,7 @@ const firestore = new Firestore({
 
 function createJWT(user) {
   var payload = {
-    sub: user.google,
+    google_id: user.google_id,
     iat: moment().unix(),
     exp: moment()
       .add(14, "days")
@@ -29,16 +30,6 @@ function createJWT(user) {
   return jwt.encode(payload, config.JWT_TOKEN_SECRET);
 }
 
-/*
-function uuidv4() {
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-    (
-      c ^
-      (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-    ).toString(16)
-  );
-}
-*/
 function validateJWT(req, res) {
   try {
     console.log("JWT_TOKEN_SECRET:" + config.JWT_TOKEN_SECRET);
@@ -49,7 +40,7 @@ function validateJWT(req, res) {
     if (typeof jwtPayload.exp === "number") {
       // JWT with an optonal expiration claims
       let now = Math.round(new Date().getTime() / 1000);
-      if (jwtPayload.exp < now) {
+      if (jwtPayload.exp > now) {
         req.jwtPayload = jwtPayload;
       } else {
         throw { message: "JWT Expired" };
@@ -94,7 +85,7 @@ exports.auth = (req, res) => {
     // The access token is a JWT with a payload of the info we want
     let decoded = jwt.decode(token.id_token, null, true);
     let user = {};
-    user.google = decoded.sub;
+    user.google_id = decoded.sub;
     user.displayName = decoded.name;
     user.name = decoded.name;
     return firestore
@@ -105,7 +96,8 @@ exports.auth = (req, res) => {
         if (!(results && results.length > 0)) {
           user.pendingUserCreation = true;
         } else {
-          user.user_id = results[0].user_id;
+          user.user_id = results[0].id;
+          user.displayName = results[0].display_name;
         }
         let applicationJWT = createJWT(user);
         let responseString =
@@ -133,6 +125,29 @@ exports.createUser = (req, res) => {
   if (!validateJWT(req, res)) {
     return;
   }
+  let userId = uuidv4();
+  firestore
+    .collection("users")
+    .doc(userId)
+    .set({
+      googleId: req.jwtPayload.google_id,
+      name: req.jwtPayload.name,
+      userId: userId
+    })
+    .then(function() {
+      let applicationJWT = createJWT({
+        google_id: req.jwtPayload.google_id,
+        displayName: req.jwtPayload.name,
+        userId: userId
+      });
+      // eslint-disable-next-line no-console
+      console.log("Document successfully written!");
+      return res.send(JSON.stringify({ token: applicationJWT }));
+    })
+    .catch(function(error) {
+      console.error("Error writing document: ", error);
+      return res.status(500).send({ error: "Database error" });
+    });
 };
 
 /**

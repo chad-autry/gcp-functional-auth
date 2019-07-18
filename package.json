@@ -13,7 +13,7 @@
   },
   "scripts": {
     "eslint:fix": "eslint --fix 'index.js'",
-    "eslint:init":"eslint --init"
+    "eslint:init": "eslint --init"
   },
   "dependencies": {
     "@google-cloud/debug-agent": "^4.0.0",
@@ -35,7 +35,7 @@
     "proxyquire": "^2.1.0",
     "sinon": "^7.0.0",
     "supertest": "^4.0.0",
-    "uuid": "^3.1.0",
+    "uuid": "^3.3.2",
     "yargs": "^13.0.0"
   },
   "cloud-repo-tools": {
