@@ -90,7 +90,7 @@ exports.auth = (req, res) => {
     user.name = decoded.name;
     return firestore
       .collection("users")
-      .where("google_id", "==", decoded.sub)
+      .where("googleId", "==", decoded.sub)
       .get()
       .then(results => {
         if (!(results && results.length > 0)) {
@@ -108,7 +108,10 @@ exports.auth = (req, res) => {
       })
       .catch(err => {
         console.error(err);
-        return res.status(500).send({ error: "Database error" });
+        return res
+          .status(500)
+          .set("Content-Type", "application/json")
+          .send({ error: "Database error" });
       });
   });
 };
@@ -142,11 +145,16 @@ exports.createUser = (req, res) => {
       });
       // eslint-disable-next-line no-console
       console.log("Document successfully written!");
-      return res.send(JSON.stringify({ token: applicationJWT }));
+      return res
+        .set("Content-Type", "application/json")
+        .send(JSON.stringify({ token: applicationJWT }));
     })
     .catch(function(error) {
       console.error("Error writing document: ", error);
-      return res.status(500).send({ error: "Database error" });
+      return res
+        .status(500)
+        .set("Content-Type", "application/json")
+        .send({ error: "Database error" });
     });
 };
 
@@ -162,6 +170,33 @@ exports.getUser = (req, res) => {
   if (!validateJWT(req, res)) {
     return;
   }
+  firestore
+    .collection("users")
+    .doc(req.jwtPayload.userId)
+    .get()
+    .then(function(doc) {
+      if (doc.exists) {
+        // eslint-disable-next-line no-console
+        console.log("Document data:", doc.data());
+        return res
+          .set("Content-Type", "application/json")
+          .send(JSON.stringify(doc.data()));
+      } else {
+        // doc.data() will be undefined in this case
+        console.error("No such document!");
+        return res
+          .status(500)
+          .set("Content-Type", "application/json")
+          .send({ error: "No User" });
+      }
+    })
+    .catch(function(error) {
+      console.error("Error retrieving user: ", error);
+      return res
+        .status(500)
+        .set("Content-Type", "application/json")
+        .send({ error: "Database error" });
+    });
 };
 
 /**
@@ -190,4 +225,22 @@ exports.deleteUser = (req, res) => {
   if (!validateJWT(req, res)) {
     return;
   }
+  firestore
+    .collection("users")
+    .doc(req.jwtPayload.userId)
+    .delete()
+    .then(function() {
+      // eslint-disable-next-line no-console
+      console.log("Delete success");
+      return res
+        .set("Content-Type", "application/json")
+        .send({ success: true });
+    })
+    .catch(function(error) {
+      console.error("Error retrieving user: ", error);
+      return res
+        .status(500)
+        .set("Content-Type", "application/json")
+        .send({ error: "Database error" });
+    });
 };
