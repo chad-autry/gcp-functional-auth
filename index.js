@@ -14,7 +14,7 @@ const firestore = new Firestore({
 
 function createJWT(user) {
   var payload = {
-    google_id: user.google_id,
+    googleId: user.googleId,
     iat: moment().unix(),
     exp: moment()
       .add(14, "days")
@@ -24,8 +24,8 @@ function createJWT(user) {
   if (user.pendingUserCreation) {
     payload.pendingUserCreation = true;
   }
-  if (user.user_id) {
-    payload.user_id = user.user_id;
+  if (user.userId) {
+    payload.userId = user.userId;
   }
   return jwt.encode(payload, config.JWT_TOKEN_SECRET);
 }
@@ -85,19 +85,24 @@ exports.auth = (req, res) => {
     // The access token is a JWT with a payload of the info we want
     let decoded = jwt.decode(token.id_token, null, true);
     let user = {};
-    user.google_id = decoded.sub;
-    user.displayName = decoded.name;
-    user.name = decoded.name;
+
     return firestore
       .collection("users")
       .where("googleId", "==", decoded.sub)
       .get()
       .then(results => {
-        if (!(results && results.length > 0)) {
+        // eslint-disable-next-line no-console
+        if (results.empty) {
+            
           user.pendingUserCreation = true;
+          user.googleId = decoded.sub;
+          user.displayName = decoded.name;
+              
         } else {
-          user.user_id = results[0].id;
-          user.displayName = results[0].display_name;
+            results.forEach(doc => {
+          user.userId = doc.data().userId;
+          user.displayName = doc.data().name;
+          });
         }
         let applicationJWT = createJWT(user);
         let responseString =
@@ -175,19 +180,20 @@ exports.getUser = (req, res) => {
     .doc(req.jwtPayload.userId)
     .get()
     .then(function(doc) {
-      if (doc.exists) {
-        // eslint-disable-next-line no-console
-        console.log("Document data:", doc.data());
-        return res
-          .set("Content-Type", "application/json")
-          .send(JSON.stringify(doc.data()));
-      } else {
+      if (doc.empty) {
         // doc.data() will be undefined in this case
         console.error("No such document!");
         return res
           .status(500)
           .set("Content-Type", "application/json")
           .send({ error: "No User" });
+
+      } else {
+        // eslint-disable-next-line no-console
+        console.log("Document data:", doc.data());
+        return res
+          .set("Content-Type", "application/json")
+          .send(JSON.stringify(doc.data()));
       }
     })
     .catch(function(error) {
