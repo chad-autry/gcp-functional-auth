@@ -19,7 +19,7 @@ function createJWT(user) {
     exp: moment()
       .add(14, "days")
       .unix(),
-    name: user.displayName
+    name: user.name
   };
   if (user.pendingUserCreation) {
     payload.pendingUserCreation = true;
@@ -93,15 +93,13 @@ exports.auth = (req, res) => {
       .then(results => {
         // eslint-disable-next-line no-console
         if (results.empty) {
-            
           user.pendingUserCreation = true;
           user.googleId = decoded.sub;
-          user.displayName = decoded.name;
-              
+          user.name = decoded.name;
         } else {
-            results.forEach(doc => {
-          user.userId = doc.data().userId;
-          user.displayName = doc.data().name;
+          results.forEach(doc => {
+            user.userId = doc.data().userId;
+            user.name = doc.data().name;
           });
         }
         let applicationJWT = createJWT(user);
@@ -133,21 +131,25 @@ exports.createUser = (req, res) => {
   if (!validateJWT(req, res)) {
     return;
   }
+  // TODO Validate acceptedPolicy
   let userId = uuidv4();
+  // TODO Check if the user exists
   firestore
     .collection("users")
     .doc(userId)
     .set({
-      googleId: req.jwtPayload.google_id,
+      googleId: req.jwtPayload.googleId,
       name: req.jwtPayload.name,
+      acceptedPolicy: req.jwtPayload.name,
       userId: userId
     })
     .then(function() {
       let applicationJWT = createJWT({
-        google_id: req.jwtPayload.google_id,
-        displayName: req.jwtPayload.name,
+        googleId: req.jwtPayload.googleId,
+        name: req.jwtPayload.name,
         userId: userId
       });
+      // TODO Verify there are not duplicate users
       // eslint-disable-next-line no-console
       console.log("Document successfully written!");
       return res
@@ -187,7 +189,6 @@ exports.getUser = (req, res) => {
           .status(500)
           .set("Content-Type", "application/json")
           .send({ error: "No User" });
-
       } else {
         // eslint-disable-next-line no-console
         console.log("Document data:", doc.data());
@@ -243,7 +244,7 @@ exports.deleteUser = (req, res) => {
         .send({ success: true });
     })
     .catch(function(error) {
-      console.error("Error retrieving user: ", error);
+      console.error("Error deleteing user: ", error);
       return res
         .status(500)
         .set("Content-Type", "application/json")
