@@ -89,6 +89,8 @@ exports.auth = (req, res) => {
     return firestore
       .collection("users")
       .where("googleId", "==", decoded.sub)
+      .orderBy("createTs", "asc")
+      .limit(1)
       .get()
       .then(results => {
         // eslint-disable-next-line no-console
@@ -133,28 +135,59 @@ exports.createUser = (req, res) => {
   }
   // TODO Validate acceptedPolicy
   let userId = uuidv4();
-  // TODO Check if the user exists
+
+  // We're going to insert the user, then select it right back.
+  // No table locks, can't be sure the user hasn't been created multiple times.
+  // We'll just live with any dupes, Won't slow down queries. TO much hassle to deal with atm.
   firestore
     .collection("users")
     .doc(userId)
     .set({
       googleId: req.jwtPayload.googleId,
       name: req.jwtPayload.name,
-      acceptedPolicy: req.jwtPayload.name,
+      acceptedPolicy: req.query.acceptedPolicy,
+      createTs: moment().unix(),
       userId: userId
     })
     .then(function() {
-      let applicationJWT = createJWT({
-        googleId: req.jwtPayload.googleId,
-        name: req.jwtPayload.name,
-        userId: userId
-      });
-      // TODO Verify there are not duplicate users
-      // eslint-disable-next-line no-console
-      console.log("Document successfully written!");
-      return res
-        .set("Content-Type", "application/json")
-        .send(JSON.stringify({ token: applicationJWT }));
+      firestore
+        .collection("users")
+        .where("googleId", "==", req.jwtPayload.googleId)
+        .orderBy("createTs", "asc")
+        .limit(1)
+        .get()
+        .then(results => {
+          // eslint-disable-next-line no-console
+          if (results.empty) {
+            return res
+              .status(500)
+              .set("Content-Type", "application/json")
+              .send({
+                error: "Database error re-selecting newly created user"
+              });
+          } else {
+            results.forEach(doc => {
+              let applicationJWT = createJWT({
+                googleId: req.jwtPayload.googleId,
+                name: req.jwtPayload.name,
+
+                userId: doc.data().userId
+              });
+              // eslint-disable-next-line no-console
+              console.log("Document successfully written!");
+              return res
+                .set("Content-Type", "application/json")
+                .send(JSON.stringify({ token: applicationJWT }));
+            });
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          return res
+            .status(500)
+            .set("Content-Type", "application/json")
+            .send({ error: "Database error re-selecting newly created user" });
+        });
     })
     .catch(function(error) {
       console.error("Error writing document: ", error);
