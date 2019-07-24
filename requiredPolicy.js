@@ -1,0 +1,1 @@
+module.exports = {"Terms of Service":"1.0", "Privacy Policy":"2.0"}

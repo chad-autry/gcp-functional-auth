@@ -4,6 +4,8 @@ let config = require("./config");
 let request = require("request");
 let jwt = require("jwt-simple");
 let moment = require("moment");
+let requiredPolicy = new Map(Object.entries(require("./requiredPolicy")));
+let optionalPolicy = new Map(Object.entries(require("./optionalPolicy")));
 const uuidv4 = require("uuid/v4");
 
 const Firestore = require("@google-cloud/firestore");
@@ -133,7 +135,41 @@ exports.createUser = (req, res) => {
   if (!validateJWT(req, res)) {
     return;
   }
-  // TODO Validate acceptedPolicy
+  // Validate acceptedPolicy
+  let acceptedPolicy = {};
+  try {
+    acceptedPolicy = JSON.parse(req.query.acceptedPolicy);
+    let acceptedPolicyEntries = Object.entries(acceptedPolicy);
+
+    //Sanity check that the client isn't providing too many elements
+    if (acceptedPolicyEntries.length > requiredPolicy.size + optionalPolicy.size) {
+      throw "invalid";
+    }
+
+    //Loop through all the acceptedPolicy, check that it exists in the required or optional policy maps
+    //Keep a counter of requiredPolicy matches
+    let requiredPolicyMatchCounter = 0;
+    acceptedPolicyEntries.forEach((entryArray) => {
+      if (requiredPolicy.has(entryArray[0])) {
+        requiredPolicyMatchCounter++;
+      } else if (optionalPolicy.has(entryArray[0])) {
+        //noop
+      } else {
+        console.error("Unrecognized policy entry");
+        throw "invalid";
+      }
+    });
+
+    if (requiredPolicyMatchCounter < requiredPolicy.size) {
+      console.error("Not all required policy accepted");
+      throw "invalid";
+    }
+  } catch (err) {
+    return res
+      .status(500)
+      .set("Content-Type", "application/json")
+      .send({ error: "Invalid policy" });
+  }
   let userId = uuidv4();
 
   // We're going to insert the user, then select it right back.
@@ -145,7 +181,7 @@ exports.createUser = (req, res) => {
     .set({
       googleId: req.jwtPayload.googleId,
       name: req.jwtPayload.name,
-      acceptedPolicy: req.query.acceptedPolicy,
+      acceptedPolicy: acceptedPolicy,
       createTs: moment().unix(),
       userId: userId
     })
