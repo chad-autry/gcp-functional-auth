@@ -29,6 +29,9 @@ function createJWT(user) {
   if (user.userId) {
     payload.userId = user.userId;
   }
+  if (user.requiresPolicyUpdate) {
+    payload.requiresPolicyUpdate = true;
+  }
   return jwt.encode(payload, config.JWT_TOKEN_SECRET);
 }
 
@@ -102,6 +105,15 @@ exports.auth = (req, res) => {
           user.name = decoded.name;
         } else {
           results.forEach(doc => {
+            let acceptedPolicyMap = new Map(
+              Object.entries(doc.data().acceptedPolicy)
+            );
+            requiredPolicy.forEach((value, key) => {
+              if (acceptedPolicyMap.get(key) !== value) {
+                user.requiresPolicyUpdate = true;
+              }
+            });
+
             user.userId = doc.data().userId;
             user.name = doc.data().name;
           });
@@ -142,14 +154,17 @@ exports.createUser = (req, res) => {
     let acceptedPolicyEntries = Object.entries(acceptedPolicy);
 
     //Sanity check that the client isn't providing too many elements
-    if (acceptedPolicyEntries.length > requiredPolicy.size + optionalPolicy.size) {
+    if (
+      acceptedPolicyEntries.length >
+      requiredPolicy.size + optionalPolicy.size
+    ) {
       throw "invalid";
     }
 
     //Loop through all the acceptedPolicy, check that it exists in the required or optional policy maps
     //Keep a counter of requiredPolicy matches
     let requiredPolicyMatchCounter = 0;
-    acceptedPolicyEntries.forEach((entryArray) => {
+    acceptedPolicyEntries.forEach(entryArray => {
       if (requiredPolicy.has(entryArray[0])) {
         requiredPolicyMatchCounter++;
       } else if (optionalPolicy.has(entryArray[0])) {
