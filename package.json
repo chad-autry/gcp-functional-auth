@@ -19,7 +19,7 @@
     "@google-cloud/debug-agent": "^4.0.0",
     "@google-cloud/firestore": "2.2.4",
     "jwt-simple": "^0.5.6",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "request": "^2.69.0"
   },
   "devDependencies": {
